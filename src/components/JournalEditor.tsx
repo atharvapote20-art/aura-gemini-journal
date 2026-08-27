@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { JournalEntry, ChatMessage, ActionItem, SentimentType, PriorityType, JournalSynthesis } from '../types';
 import { maskPII } from '../lib/sanitizer';
+import { ActionWorkbenchDrawer } from './ActionWorkbenchDrawer';
 
 interface JournalEditorProps {
   entry: JournalEntry;
@@ -78,6 +79,7 @@ export const JournalEditor: React.FC<JournalEditorProps> = ({
   const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'dialogue' | 'synthesis'>('dialogue');
   const [newTagInput, setNewTagInput] = useState('');
+  const [isWorkbenchOpen, setIsWorkbenchOpen] = useState(false);
 
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
@@ -374,14 +376,32 @@ ${currentEntry.actionItems?.map((a) => `- [${a.completed ? 'x' : ' '}] (${a.prio
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* Action Workbench Trigger Button */}
+          <button
+            id="btn-open-action-workbench"
+            onClick={() => setIsWorkbenchOpen(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-neutral-900 bg-neutral-900 px-3.5 py-2 text-xs sm:text-sm font-medium text-white transition-colors hover:bg-neutral-800"
+          >
+            <Zap className="h-3.5 w-3.5 text-amber-300" />
+            <span>Open Action Workbench</span>
+            {currentEntry.artifacts && (
+              <span className="ml-1 rounded bg-neutral-700 px-1.5 py-0.2 text-[10px] font-mono text-neutral-200">
+                {(currentEntry.artifacts.email_drafts?.length || 0) +
+                  (currentEntry.artifacts.code_or_tech_specs?.length || 0) +
+                  (currentEntry.artifacts.calendar_blocks?.length || 0) +
+                  (currentEntry.artifacts.action_dag?.length || 0)}
+              </span>
+            )}
+          </button>
+
           {/* Synthesize Button */}
           <button
             id="btn-synthesize-gemini"
             onClick={handleSynthesize}
             disabled={isSynthesizing || isSaving}
-            className="flex items-center gap-1.5 rounded-lg bg-neutral-900 px-3.5 py-2 text-xs sm:text-sm font-medium text-white transition-colors hover:bg-neutral-800 disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3.5 py-2 text-xs sm:text-sm font-medium text-neutral-800 transition-colors hover:bg-neutral-50 disabled:opacity-50"
           >
-            <Sparkles className={`h-3.5 w-3.5 ${isSynthesizing ? 'animate-spin' : 'text-neutral-300'}`} />
+            <Sparkles className={`h-3.5 w-3.5 ${isSynthesizing ? 'animate-spin' : 'text-neutral-500'}`} />
             <span>{isSynthesizing ? 'Synthesizing...' : 'Synthesize with Gemini'}</span>
           </button>
 
@@ -754,6 +774,34 @@ ${currentEntry.actionItems?.map((a) => `- [${a.completed ? 'x' : ' '}] (${a.prio
                     </div>
                   )}
 
+                  {/* Action Workbench Callout Card */}
+                  <div className="rounded-lg border border-neutral-200 bg-neutral-50/80 p-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-md bg-neutral-900 text-amber-300">
+                        <Zap className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <h5 className="text-xs font-semibold text-neutral-900">
+                          Autonomous Action Engine
+                        </h5>
+                        <p className="text-[11px] text-neutral-500">
+                          {currentEntry.artifacts
+                            ? `${(currentEntry.artifacts.email_drafts?.length || 0) + (currentEntry.artifacts.code_or_tech_specs?.length || 0) + (currentEntry.artifacts.calendar_blocks?.length || 0) + (currentEntry.artifacts.action_dag?.length || 0)} execution artifacts ready (emails, code, .ics, DAG).`
+                            : 'Synthesize ready-to-execute emails, code specs, calendar blocks, and DAG tasks.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      id="btn-open-workbench-from-synthesis"
+                      onClick={() => setIsWorkbenchOpen(true)}
+                      className="flex items-center gap-1 rounded-md bg-neutral-900 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-neutral-800 transition-colors shrink-0"
+                    >
+                      <Zap className="h-3 w-3 text-amber-300" />
+                      <span>{currentEntry.artifacts ? 'View Workbench' : 'Open Workbench'}</span>
+                    </button>
+                  </div>
+
                   {/* Sentiment & Tags Card */}
                   <div className="border-t border-neutral-100 pt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
                     <div className="flex items-center gap-1.5">
@@ -779,6 +827,17 @@ ${currentEntry.actionItems?.map((a) => `- [${a.completed ? 'x' : ' '}] (${a.prio
           )}
         </div>
       </div>
+
+      {/* Interactive Action Workbench Drawer (Directive 10) */}
+      <ActionWorkbenchDrawer
+        isOpen={isWorkbenchOpen}
+        onClose={() => setIsWorkbenchOpen(false)}
+        entry={currentEntry}
+        onUpdateEntry={async (updated) => {
+          setCurrentEntry(updated);
+          await onSave(updated);
+        }}
+      />
     </div>
   );
 };

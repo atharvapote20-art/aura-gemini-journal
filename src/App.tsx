@@ -11,6 +11,7 @@ import {
   signInAsGuest,
   signOutUser,
   formatUserProfile,
+  getLocalGuestProfile,
   saveJournalEntry,
   deleteJournalEntry,
   subscribeToUserJournals,
@@ -56,12 +57,26 @@ export default function App() {
   // 1. Firebase Auth Observer
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user: User | null) => {
-      const formatted = formatUserProfile(user);
-      setCurrentUser(formatted);
-      setIsAuthChecking(false);
+      if (user) {
+        const formatted = formatUserProfile(user);
+        setCurrentUser(formatted);
+        setIsAuthChecking(false);
 
-      if (formatted && !activeEntry) {
-        setActiveEntry(createNewEntryTemplate(formatted.uid));
+        if (formatted && !activeEntry) {
+          setActiveEntry(createNewEntryTemplate(formatted.uid));
+        }
+      } else {
+        // Check for local guest session
+        const localGuest = getLocalGuestProfile();
+        if (localGuest) {
+          setCurrentUser(localGuest);
+          if (!activeEntry) {
+            setActiveEntry(createNewEntryTemplate(localGuest.uid));
+          }
+        } else {
+          setCurrentUser(null);
+        }
+        setIsAuthChecking(false);
       }
     });
 
@@ -120,7 +135,9 @@ export default function App() {
     setIsAuthLoading(true);
     setAuthError(null);
     try {
-      await signInAsGuest();
+      const profile = await signInAsGuest();
+      setCurrentUser(profile);
+      setActiveEntry(createNewEntryTemplate(profile.uid));
     } catch (err: any) {
       console.error('Guest sign in error:', err);
       setAuthError(err.message || 'Guest session initialization failed.');
@@ -133,6 +150,7 @@ export default function App() {
   const handleSignOut = async () => {
     try {
       await signOutUser();
+      setCurrentUser(null);
       setActiveEntry(null);
       setEntries([]);
       setActiveTab('editor');

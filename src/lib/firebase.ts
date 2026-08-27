@@ -49,6 +49,8 @@ googleProvider.setCustomParameters({
   prompt: 'select_account',
 });
 
+const GUEST_STORAGE_KEY = 'aura_guest_journals';
+
 /**
  * Sign in with Google (Popup method with Redirect fallback)
  */
@@ -71,18 +73,93 @@ export async function signInWithGoogle(): Promise<User> {
 }
 
 /**
- * Guest/Anonymous Sign In for instant sandbox exploration without popups
+ * Guest/Anonymous Sign In for instant sandbox exploration.
+ * Handles Firebase 'auth/admin-restricted-operation' gracefully by providing a local sandbox profile.
  */
-export async function signInAsGuest(): Promise<User> {
-  const result = await signInAnonymously(auth);
-  return result.user;
+export async function signInAsGuest(): Promise<UserProfile> {
+  try {
+    const result = await signInAnonymously(auth);
+    return formatUserProfile(result.user)!;
+  } catch (error: any) {
+    // If anonymous sign-in is disabled in Firebase console (auth/admin-restricted-operation or auth/operation-not-allowed)
+    if (
+      error.code === 'auth/admin-restricted-operation' ||
+      error.code === 'auth/operation-not-allowed' ||
+      error.message?.includes('admin-restricted-operation')
+    ) {
+      console.info('Firebase anonymous auth is disabled in project console. Using local sandbox session.');
+      let guestId = localStorage.getItem('aura_guest_uid');
+      if (!guestId) {
+        guestId = 'guest-sandbox-' + Math.random().toString(36).substring(2, 9);
+        localStorage.setItem('aura_guest_uid', guestId);
+      }
+      const guestProfile: UserProfile = {
+        uid: guestId,
+        displayName: 'Guest Reflective User',
+        email: null,
+        photoURL: null,
+        isAnonymous: true,
+      };
+      localStorage.setItem('aura_guest_active', 'true');
+      return guestProfile;
+    }
+    throw error;
+  }
 }
 
 /**
  * Sign Out
  */
 export async function signOutUser(): Promise<void> {
-  await signOut(auth);
+  localStorage.removeItem('aura_guest_active');
+  try {
+    if (auth.currentUser) {
+      await signOut(auth);
+    }
+  } catch (err) {
+    console.warn('Sign out error:', err);
+  }
+}
+
+/**
+ * Check for existing guest session
+ */
+export function getLocalGuestProfile(): UserProfile | null {
+  const isGuestActive = localStorage.getItem('aura_guest_active') === 'true';
+  const guestId = localStorage.getItem('aura_guest_uid');
+  if (isGuestActive && guestId) {
+    return {
+      uid: guestId,
+      displayName: 'Guest Reflective User',
+      email: null,
+      photoURL: null,
+      isAnonymous: true,
+    };
+  }
+  return null;
+}
+
+/**
+ * Helper to get local guest entries
+ */
+function getLocalGuestEntries(): JournalEntry[] {
+  try {
+    const data = localStorage.getItem(GUEST_STORAGE_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Helper to save local guest entries
+ */
+function setLocalGuestEntries(entries: JournalEntry[]): void {
+  try {
+    localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(entries));
+  } catch (e) {
+    console.warn('Could not save to localStorage:', e);
+  }
 }
 
 /**
@@ -120,14 +197,27 @@ export function getUserInteractionsCollection(userId: string) {
  */
 export async function saveJournalEntry(userId: string, entry: JournalEntry): Promise<void> {
   if (!userId) throw new Error('User ID is required to save journal entry');
-  
-  const entryRef = doc(db, 'users', userId, 'journals', entry.id);
+
   const cleanData = sanitizePayload({
     ...entry,
     userId,
     updatedAt: Date.now(),
   });
 
+  // If local guest sandbox user or no active firebase token
+  if (userId.startsWith('guest-') || !auth.currentUser) {
+    const existing = getLocalGuestEntries();
+    const idx = existing.findIndex((e) => e.id === entry.id);
+    if (idx >= 0) {
+      existing[idx] = cleanData as JournalEntry;
+    } else {
+      existing.unshift(cleanData as JournalEntry);
+    }
+    setLocalGuestEntries(existing);
+    return;
+  }
+  
+  const entryRef = doc(db, 'users', userId, 'journals', entry.id);
   await setDoc(entryRef, cleanData, { merge: true });
 
   // Also log the latest interaction record for audit and interaction indexing
@@ -154,6 +244,14 @@ export async function saveJournalEntry(userId: string, entry: JournalEntry): Pro
  */
 export async function deleteJournalEntry(userId: string, entryId: string): Promise<void> {
   if (!userId || !entryId) return;
+
+  if (userId.startsWith('guest-') || !auth.currentUser) {
+    const existing = getLocalGuestEntries();
+    const filtered = existing.filter((e) => e.id !== entryId);
+    setLocalGuestEntries(filtered);
+    return;
+  }
+
   const entryRef = doc(db, 'users', userId, 'journals', entryId);
   await deleteDoc(entryRef);
 }
@@ -167,6 +265,19 @@ export function subscribeToUserJournals(
   onError?: (error: Error) => void
 ) {
   if (!userId) return () => {};
+
+  if (userId.startsWith('guest-') || !auth.currentUser) {
+    const local = getLocalGuestEntries();
+    onUpdate(local);
+    // Poll or event listener for local storage changes if needed
+    const handler = () => {
+      onUpdate(getLocalGuestEntries());
+    };
+    window.addEventListener('storage', handler);
+    return () => {
+      window.removeEventListener('storage', handler);
+    };
+  }
 
   const colRef = getUserJournalsCollection(userId);
   const q = query(colRef, orderBy('createdAt', 'desc'));
@@ -182,7 +293,13 @@ export function subscribeToUserJournals(
     },
     (err) => {
       console.error('Firestore subscription error:', err);
-      if (onError) onError(err);
+      // Fallback to local guest store if Firestore rejects due to permission
+      const local = getLocalGuestEntries();
+      if (local.length > 0) {
+        onUpdate(local);
+      } else if (onError) {
+        onError(err);
+      }
     }
   );
 }

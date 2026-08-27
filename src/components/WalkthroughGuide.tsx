@@ -102,6 +102,68 @@ const TEST_CASES: TestCase[] = [
     ],
     expectedResult: 'Sensitive credentials are scrubbed client and server-side before reaching LLM context.',
   },
+  {
+    id: 'TC-WORKBENCH-07',
+    category: '7. Autonomous Action Engine & Workbench Drawer',
+    title: 'Sliding Artifact Drawer, Category Filters & Tone Tuning',
+    instructions: [
+      'From the Journal Studio editor, click the "⚡ Open Action Workbench" button in the top action bar.',
+      'Observe the sliding drawer open smoothly from the right side of the screen.',
+      'Click the Tone control buttons ("diplomatic", "assertive", "direct") or type an optional guidance prompt (e.g. "Focus on executive summary and technical architecture").',
+      'Click "Regenerate Artifacts" and verify all 4 artifact categories are generated.',
+      'Use the filter chips ("All", "Emails", "Tech Specs", "Calendar", "DAG Tasks") to toggle between artifact views.',
+    ],
+    expectedResult: 'Sliding drawer displays synthesized execution artifacts adhering strictly to Directive 10 schema.',
+  },
+  {
+    id: 'TC-EMAIL-08',
+    category: '8. Email Draft Synthesis & 1-Click Copy',
+    title: 'Ready-to-Send Email Generation & Clipboard Integration',
+    instructions: [
+      'In the Action Workbench drawer, inspect the synthesized email draft cards.',
+      'Verify the recipient role, tone badge, subject line, and body are rendered.',
+      'Click "Copy" on an email draft card and verify the clipboard receives the full subject and formatted email body with a visual copied confirmation.',
+      'Click "Open Mail" to verify the default mailto client opens with pre-populated subject and body.',
+    ],
+    expectedResult: 'Email drafts can be edited, copied to clipboard in 1 click, or launched into email clients.',
+  },
+  {
+    id: 'TC-CODE-09',
+    category: '9. Technical Specs & Code Artifacts',
+    title: 'Syntax-Highlighted Code Snippets & Spec Extraction',
+    instructions: [
+      'In the Action Workbench drawer, navigate to the "Tech Specs" section.',
+      'Verify that code snippets (e.g. TypeScript interfaces, SQL schemas, scripts) render inside a dark styled code block with language badge.',
+      'Click "Copy Code" to copy the raw snippet to clipboard.',
+      'Verify the technical context explanation renders below the code block.',
+    ],
+    expectedResult: 'Technical artifacts are structured with clean syntax formatting and 1-click code copying.',
+  },
+  {
+    id: 'TC-CALENDAR-10',
+    category: '10. Calendar Time-Blocks & RFC 5545 .ics Export',
+    title: 'Focus Time Blocks & Direct Calendar Import',
+    instructions: [
+      'In the Action Workbench drawer, locate the Calendar Time-Blocks section.',
+      'Verify event titles, duration badges (e.g. 30m, 45m), and agendas are listed.',
+      'Click ".ics File" to download an RFC 5545 compliant `.ics` calendar invitation file.',
+      'Click "Google Cal" to open Google Calendar in a new tab with pre-filled event title, duration, and agenda.',
+    ],
+    expectedResult: 'Users can download `.ics` calendar files or launch pre-filled Google Calendar web events with 1 click.',
+  },
+  {
+    id: 'TC-DAG-11',
+    category: '11. Action DAG Interactive Task Checklist & Live Sync',
+    title: 'Dependency Graph, Time Estimates & Firestore Synchronization',
+    instructions: [
+      'In the Action Workbench drawer, view the Action DAG Checklist section.',
+      'Verify that tasks display task IDs, priority badges, estimated minutes (e.g. 15m), and dependency tags (e.g. "Depends on: task-1").',
+      'Observe the DAG completion percentage and progress bar.',
+      'Click any DAG task item to check off completion; verify the progress bar animates.',
+      'Verify that task completion status immediately persists to Firestore under `/users/{userId}/journals/{journalId}`.',
+    ],
+    expectedResult: 'Interactive task DAG reflects dependency hierarchy and syncs completed status live to Firestore.',
+  },
 ];
 
 export const WalkthroughGuide: React.FC = () => {

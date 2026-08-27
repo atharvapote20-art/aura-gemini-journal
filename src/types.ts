@@ -5,6 +5,46 @@
 
 export type SentimentType = 'energized' | 'reflective' | 'focused' | 'stressed' | 'calm';
 export type PriorityType = 'high' | 'medium' | 'low';
+export type ArtifactToneType = 'diplomatic' | 'assertive' | 'direct';
+
+export interface EmailDraft {
+  id?: string;
+  recipient_role: string;
+  subject: string;
+  body: string;
+  tone: ArtifactToneType;
+}
+
+export interface CodeTechSpec {
+  id?: string;
+  title: string;
+  language: string;
+  snippet: string;
+  explanation: string;
+}
+
+export interface CalendarBlock {
+  id?: string;
+  event_title: string;
+  duration_minutes: number;
+  agenda: string;
+}
+
+export interface DagTask {
+  id: string;
+  task: string;
+  priority: PriorityType;
+  estimated_minutes: number;
+  depends_on: string[];
+  completed: boolean;
+}
+
+export interface ArtifactsCollection {
+  email_drafts: EmailDraft[];
+  code_or_tech_specs: CodeTechSpec[];
+  calendar_blocks: CalendarBlock[];
+  action_dag: DagTask[];
+}
 
 export interface ActionItem {
   id: string;
@@ -31,6 +71,7 @@ export interface JournalSynthesis {
   }[];
   sentiment: SentimentType;
   tags: string[];
+  artifacts?: ArtifactsCollection;
 }
 
 export interface JournalEntry {
@@ -42,6 +83,7 @@ export interface JournalEntry {
   summary?: string;
   keyTakeaways?: string[];
   actionItems?: ActionItem[];
+  artifacts?: ArtifactsCollection;
   sentiment?: SentimentType;
   tags: string[];
   isFavorite?: boolean;

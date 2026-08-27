@@ -282,6 +282,158 @@ Synthesize:
   }
 });
 
+// Autonomous Action Engine & Artifact Synthesis (Directive 10)
+app.post('/api/gemini/artifacts', async (req: Request, res: Response) => {
+  try {
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const { content = '', messages = [], preferredTone = 'diplomatic', customInstruction = '' } = body;
+
+    const rawCombinedText = [
+      content,
+      Array.isArray(messages)
+        ? messages.map((m: any) => `${m.role === 'user' ? 'User' : 'Aura'}: ${m.content}`).join('\n')
+        : '',
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+
+    const cleanCombinedText = scrubPII(rawCombinedText);
+
+    if (!cleanCombinedText.trim()) {
+      res.status(400).json({ error: 'Entry content or dialogue is required to generate execution artifacts.' });
+      return;
+    }
+
+    const prompt = `You are an Autonomous Action & Execution Engine.
+Transform the following unstructured journal reflections and brainstorming thoughts into typed, high-leverage execution artifacts adhering strictly to the JSON schema.
+
+Tone Preference: ${preferredTone}
+${customInstruction ? `Custom User Guidance: ${customInstruction}` : ''}
+
+Journal Content:
+"""
+${cleanCombinedText}
+"""
+
+Synthesize:
+1. title: A clear, actionable title for this execution plan.
+2. summary: A concise 2-sentence operational summary.
+3. artifacts.email_drafts: 1-3 ready-to-send email drafts (e.g. status updates, proposals, feedback, questions) with recipient_role, subject, full professional body, and tone ('diplomatic' | 'assertive' | 'direct').
+4. artifacts.code_or_tech_specs: 1-3 concrete technical artifacts (e.g. database schema / SQL, TypeScript interfaces, bash script, API spec, prompt template, or pseudocode) with title, language (e.g. 'typescript', 'sql', 'bash', 'json'), snippet, and explanation.
+5. artifacts.calendar_blocks: 1-3 scheduled focus blocks or meeting agendas with event_title, duration_minutes (e.g. 15, 30, 45, 60, 90), and detailed agenda.
+6. artifacts.action_dag: 2-6 ordered actionable DAG tasks with id ('task-1', 'task-2', etc.), task, priority ('high' | 'medium' | 'low'), estimated_minutes (number), depends_on array of prior task IDs (e.g. ['task-1']), and completed (default false).`;
+
+    const result = await generateContentWithFallback({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: 'object',
+          properties: {
+            title: { type: 'string' },
+            summary: { type: 'string' },
+            artifacts: {
+              type: 'object',
+              properties: {
+                email_drafts: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      recipient_role: { type: 'string' },
+                      subject: { type: 'string' },
+                      body: { type: 'string' },
+                      tone: {
+                        type: 'string',
+                        enum: ['diplomatic', 'assertive', 'direct'],
+                      },
+                    },
+                    required: ['recipient_role', 'subject', 'body', 'tone'],
+                  },
+                },
+                code_or_tech_specs: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      title: { type: 'string' },
+                      language: { type: 'string' },
+                      snippet: { type: 'string' },
+                      explanation: { type: 'string' },
+                    },
+                    required: ['title', 'language', 'snippet', 'explanation'],
+                  },
+                },
+                calendar_blocks: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      event_title: { type: 'string' },
+                      duration_minutes: { type: 'number' },
+                      agenda: { type: 'string' },
+                    },
+                    required: ['event_title', 'duration_minutes', 'agenda'],
+                  },
+                },
+                action_dag: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'string' },
+                      task: { type: 'string' },
+                      priority: {
+                        type: 'string',
+                        enum: ['high', 'medium', 'low'],
+                      },
+                      estimated_minutes: { type: 'number' },
+                      depends_on: {
+                        type: 'array',
+                        items: { type: 'string' },
+                      },
+                      completed: { type: 'boolean' },
+                    },
+                    required: ['id', 'task', 'priority', 'estimated_minutes', 'depends_on', 'completed'],
+                  },
+                },
+              },
+              required: ['email_drafts', 'code_or_tech_specs', 'calendar_blocks', 'action_dag'],
+            },
+          },
+          required: ['title', 'summary', 'artifacts'],
+        },
+        temperature: 0.4,
+      },
+    });
+
+    let parsedResult;
+    try {
+      parsedResult = JSON.parse(result.text);
+    } catch (parseErr) {
+      console.warn('Direct JSON parse failed on artifacts, attempting regex extraction:', parseErr);
+      const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        parsedResult = JSON.parse(jsonMatch[0]);
+      } else {
+        throw new Error('Failed to parse Gemini artifacts response into structured JSON');
+      }
+    }
+
+    res.json({
+      title: parsedResult.title,
+      summary: parsedResult.summary,
+      artifacts: parsedResult.artifacts,
+      modelUsed: result.modelUsed,
+    });
+  } catch (error: any) {
+    console.error('Error in /api/gemini/artifacts:', error);
+    res.status(500).json({
+      error: error.message || 'An unexpected error occurred during artifact generation.',
+    });
+  }
+});
+
 // ----------------------------------------------------
 // FRONTEND SERVING & VITE INTEGRATION
 // ----------------------------------------------------
