@@ -1,0 +1,6 @@
+{
+  "name": "Aura Reflections & Gemini Journal",
+  "description": "User-authenticated personal journaling and multi-turn AI reflections powered by Gemini and Cloud Firestore.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
