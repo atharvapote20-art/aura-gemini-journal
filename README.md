@@ -11,7 +11,10 @@ A production-ready, security-hardened personal reflection studio and autonomous 
   - 📧 **Email Drafts**: Ready-to-send emails with recipient roles, tone selection (**Diplomatic**, **Assertive**, **Direct**), 1-click clipboard copying, and `mailto:` client integration.
   - 💻 **Technical Specs & Code**: Syntax-formatted code blocks (SQL queries, TypeScript interfaces, bash scripts, pseudocode) with 1-click code copying and technical rationale.
   - 📅 **Calendar Time-Blocks**: Focus blocks with agendas, direct Google Calendar web links, and downloadable RFC 5545 `.ics` files.
-  - 📊 **Action DAG Checklist**: Interactive directed acyclic graph task lists with time estimates (`estimated_minutes`), priority badges, dependency tags (`Depends on: task-1`), and live Firestore completion synchronization.
+  - 📊 **Interactive Action DAG & Flowchart Engine**: 
+    - **Visual Node-and-Edge Flowchart**: Dynamic SVG Bezier curves, topological level ordering, dependency resolution arrows, and critical path bottleneck highlighting.
+    - **Timeline / Gantt Horizon**: Horizontal time-stacked execution schedule mapping task durations (`estimated_minutes`) and identifying the next actionable focus slot.
+    - **Checklist Mode**: Rapid-toggle task lists with live Firestore status synchronization.
 - **Dynamic Multi-Turn Reflection Dialogue**: Contextual AI thought partner offering Socratic inquiry and cognitive reframing based on live stream-of-consciousness writing.
 - **Interactive Walkthrough Guide**: 11 end-to-end interactive test walkthrough cases (`TC-AUTH-01` through `TC-DAG-11`) built directly into the UI.
 

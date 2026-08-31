@@ -153,16 +153,19 @@ const TEST_CASES: TestCase[] = [
   },
   {
     id: 'TC-DAG-11',
-    category: '11. Action DAG Interactive Task Checklist & Live Sync',
-    title: 'Dependency Graph, Time Estimates & Firestore Synchronization',
+    category: '11. Action DAG Visual Flowchart & Timeline Horizon',
+    title: 'Dependency Graph, Critical Path & Gantt Schedule Sync',
     instructions: [
-      'In the Action Workbench drawer, view the Action DAG Checklist section.',
-      'Verify that tasks display task IDs, priority badges, estimated minutes (e.g. 15m), and dependency tags (e.g. "Depends on: task-1").',
-      'Observe the DAG completion percentage and progress bar.',
-      'Click any DAG task item to check off completion; verify the progress bar animates.',
-      'Verify that task completion status immediately persists to Firestore under `/users/{userId}/journals/{journalId}`.',
+      'In the Action Workbench drawer, locate the Action DAG section.',
+      'Click "Visual Flow" to toggle the Interactive SVG Node-and-Edge Flowchart.',
+      'Verify nodes display Ready (amber pulse), Blocked (lock icon), Done (green checkmark), and duration pills.',
+      'Click "Critical Path" button to highlight the longest bottleneck chain in indigo.',
+      'Use Zoom In / Out / Reset buttons to adjust canvas scaling.',
+      'Click any node in the flowchart to toggle its completion state and observe dependent arrows turn green.',
+      'Click "Timeline / Gantt" to inspect the horizontal time-stacked schedule and total runtime.',
+      'Switch to "Checklist" to verify traditional task list mode and Firestore persistence.',
     ],
-    expectedResult: 'Interactive task DAG reflects dependency hierarchy and syncs completed status live to Firestore.',
+    expectedResult: 'Interactive visual flowchart and timeline calculate topological levels, highlight critical paths, and persist task completions live to Firestore.',
   },
 ];
 

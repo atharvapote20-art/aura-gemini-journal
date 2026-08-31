@@ -35,6 +35,8 @@ import {
 } from '../types';
 import { downloadIcsFile, getGoogleCalendarUrl } from '../lib/calendar';
 import { maskPII } from '../lib/sanitizer';
+import { DagVisualizer } from './DagVisualizer';
+import { GitBranch, List } from 'lucide-react';
 
 interface ActionWorkbenchDrawerProps {
   isOpen: boolean;
@@ -50,6 +52,7 @@ export const ActionWorkbenchDrawer: React.FC<ActionWorkbenchDrawerProps> = ({
   onUpdateEntry,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'emails' | 'code' | 'calendar' | 'dag'>('all');
+  const [dagDisplayMode, setDagDisplayMode] = useState<'visual' | 'list'>('visual');
   const [selectedTone, setSelectedTone] = useState<ArtifactToneType>('diplomatic');
   const [customGuidance, setCustomGuidance] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -600,21 +603,52 @@ export const ActionWorkbenchDrawer: React.FC<ActionWorkbenchDrawerProps> = ({
                     </section>
                   )}
 
-                {/* 4. ACTION DAG CHECKLIST */}
+                {/* 4. ACTION DAG CHECKLIST & INTERACTIVE VISUALIZER */}
                 {(selectedCategory === 'all' || selectedCategory === 'dag') &&
                   artifacts.action_dag &&
                   artifacts.action_dag.length > 0 && (
                     <section className="space-y-3">
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-100 pb-2">
                         <div className="flex items-center gap-2">
                           <h4 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 flex items-center gap-1.5">
                             <ListOrdered className="h-3.5 w-3.5 text-neutral-600" />
-                            <span>Action DAG Checklist ({completedDagTasks}/{dagTasks.length})</span>
+                            <span>Action DAG Engine ({completedDagTasks}/{dagTasks.length})</span>
                           </h4>
                         </div>
-                        <span className="text-xs font-semibold text-neutral-900">
-                          {dagPercent}% Done
-                        </span>
+
+                        <div className="flex items-center gap-2">
+                          {/* Toggle View Mode */}
+                          <div className="flex rounded-md border border-neutral-200 bg-neutral-100 p-0.5 text-xs">
+                            <button
+                              id="btn-switch-dag-visual"
+                              onClick={() => setDagDisplayMode('visual')}
+                              className={`flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                                dagDisplayMode === 'visual'
+                                  ? 'bg-white text-neutral-900 shadow-xs'
+                                  : 'text-neutral-500 hover:text-neutral-900'
+                              }`}
+                            >
+                              <GitBranch className="h-3 w-3" />
+                              <span>Visual Flow</span>
+                            </button>
+                            <button
+                              id="btn-switch-dag-list"
+                              onClick={() => setDagDisplayMode('list')}
+                              className={`flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                                dagDisplayMode === 'list'
+                                  ? 'bg-white text-neutral-900 shadow-xs'
+                                  : 'text-neutral-500 hover:text-neutral-900'
+                              }`}
+                            >
+                              <List className="h-3 w-3" />
+                              <span>Checklist</span>
+                            </button>
+                          </div>
+
+                          <span className="text-xs font-semibold text-neutral-900">
+                            {dagPercent}% Done
+                          </span>
+                        </div>
                       </div>
 
                       {/* Progress Bar */}
@@ -625,73 +659,82 @@ export const ActionWorkbenchDrawer: React.FC<ActionWorkbenchDrawerProps> = ({
                         />
                       </div>
 
-                      <div className="space-y-2">
-                        {artifacts.action_dag.map((dagTask) => {
-                          const priorityBadge: Record<PriorityType, string> = {
-                            high: 'border-neutral-300 bg-neutral-100 text-neutral-900 font-semibold',
-                            medium: 'border-neutral-200 bg-neutral-50 text-neutral-700',
-                            low: 'border-neutral-200 bg-neutral-50 text-neutral-500',
-                          };
+                      {/* VISUAL FLOW / TIMELINE MODE */}
+                      {dagDisplayMode === 'visual' ? (
+                        <DagVisualizer
+                          tasks={artifacts.action_dag}
+                          onToggleTask={handleToggleDagTask}
+                        />
+                      ) : (
+                        /* STANDARD CHECKLIST MODE */
+                        <div className="space-y-2">
+                          {artifacts.action_dag.map((dagTask) => {
+                            const priorityBadge: Record<PriorityType, string> = {
+                              high: 'border-rose-200 bg-rose-50 text-rose-800 font-semibold',
+                              medium: 'border-neutral-200 bg-neutral-50 text-neutral-700',
+                              low: 'border-neutral-200 bg-neutral-50 text-neutral-500',
+                            };
 
-                          return (
-                            <div
-                              key={dagTask.id}
-                              id={`dag-task-${dagTask.id}`}
-                              onClick={() => handleToggleDagTask(dagTask.id)}
-                              className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition-colors ${
-                                dagTask.completed
-                                  ? 'border-neutral-200 bg-neutral-50/60 opacity-60'
-                                  : 'border-neutral-200 bg-white hover:border-neutral-300 shadow-xs'
-                              }`}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={dagTask.completed}
-                                onChange={() => {}} // Handled by card onClick
-                                className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-neutral-900 focus:ring-0"
-                              />
+                            return (
+                              <div
+                                key={dagTask.id}
+                                id={`dag-task-${dagTask.id}`}
+                                onClick={() => handleToggleDagTask(dagTask.id)}
+                                className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition-colors ${
+                                  dagTask.completed
+                                    ? 'border-neutral-200 bg-neutral-50/60 opacity-60'
+                                    : 'border-neutral-200 bg-white hover:border-neutral-300 shadow-xs'
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={dagTask.completed}
+                                  onChange={() => {}} // Handled by card onClick
+                                  className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-neutral-900 focus:ring-0"
+                                />
 
-                              <div className="flex-1 space-y-1">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <span className="text-[10px] font-mono uppercase text-neutral-400">
-                                    {dagTask.id}
-                                  </span>
-                                  <span
-                                    className={`rounded px-1.5 py-0.2 text-[10px] uppercase tracking-wide border ${
-                                      priorityBadge[dagTask.priority] || priorityBadge.medium
+                                <div className="flex-1 space-y-1">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="text-[10px] font-mono uppercase text-neutral-400">
+                                      {dagTask.id}
+                                    </span>
+                                    <span
+                                      className={`rounded px-1.5 py-0.2 text-[10px] uppercase tracking-wide border ${
+                                        priorityBadge[dagTask.priority] || priorityBadge.medium
+                                      }`}
+                                    >
+                                      {dagTask.priority}
+                                    </span>
+                                    <span className="flex items-center gap-1 text-[11px] text-neutral-500">
+                                      <Clock className="h-3 w-3" />
+                                      {dagTask.estimated_minutes}m
+                                    </span>
+                                  </div>
+
+                                  <p
+                                    className={`text-xs sm:text-sm ${
+                                      dagTask.completed ? 'line-through text-neutral-400' : 'text-neutral-900 font-medium'
                                     }`}
                                   >
-                                    {dagTask.priority}
-                                  </span>
-                                  <span className="flex items-center gap-1 text-[11px] text-neutral-500">
-                                    <Clock className="h-3 w-3" />
-                                    {dagTask.estimated_minutes}m
-                                  </span>
+                                    {dagTask.task}
+                                  </p>
+
+                                  {dagTask.depends_on && dagTask.depends_on.length > 0 && (
+                                    <div className="flex items-center gap-1 text-[10px] text-neutral-400">
+                                      <span>Depends on:</span>
+                                      {dagTask.depends_on.map((dep) => (
+                                        <span key={dep} className="rounded bg-neutral-100 px-1 font-mono text-neutral-600">
+                                          {dep}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
-
-                                <p
-                                  className={`text-xs sm:text-sm ${
-                                    dagTask.completed ? 'line-through text-neutral-400' : 'text-neutral-900 font-medium'
-                                  }`}
-                                >
-                                  {dagTask.task}
-                                </p>
-
-                                {dagTask.depends_on && dagTask.depends_on.length > 0 && (
-                                  <div className="flex items-center gap-1 text-[10px] text-neutral-400">
-                                    <span>Depends on:</span>
-                                    {dagTask.depends_on.map((dep) => (
-                                      <span key={dep} className="rounded bg-neutral-100 px-1 font-mono text-neutral-600">
-                                        {dep}
-                                      </span>
-                                    ))}
-                                  </div>
-                                )}
                               </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </section>
                   )}
               </>
